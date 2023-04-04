@@ -46,6 +46,12 @@
 #endif
 #include <sys/time.h>
 #include <sys/select.h>
+#include <linux/perf_event.h>
+#include <sys/ioctl.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <linux/hw_breakpoint.h>
+#include <sys/syscall.h>
 
 #include "iperf.h"
 #include "iperf_api.h"
@@ -67,6 +73,18 @@
 #  endif
 # endif
 #endif
+
+
+long
+perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
+                int cpu, int group_fd, unsigned long flags)
+{
+    int ret;
+
+    ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
+                    group_fd, flags);
+    return ret;
+}
 
 /* iperf_udp_recv
  *
@@ -94,7 +112,6 @@ iperf_udp_recv(struct iperf_stream *sp)
  * To fully support `mmsgrecv`, in addition to uncommenting (here and in other parts
  * of `iperf_udp_recv`), `sp->buffer` should be changed to `pbuf`.
  */
-/**************** NOT USING `mmsgrecv()` ******************************
     int msgs_recvd;
     int i;
     char *pbuf;
@@ -128,7 +145,6 @@ iperf_udp_recv(struct iperf_stream *sp)
         msgs_recvd = 1;
         // `sp->msg[0].msg_hdr.msg_iov->iov_base = sp->buffer;` - not needed as initialized as part of Stream init
     }
-**************** NOT USING `mmsgrecv()` ******************************/
 
     r = Nread(sp->socket, sp->buffer, size, Pudp);
 
@@ -154,11 +170,9 @@ iperf_udp_recv(struct iperf_stream *sp)
 	sp->result->bytes_received += r;
 	sp->result->bytes_received_this_interval += r;
 
-/**************** NOT USING `mmsgrecv()` ******************************
 	// Go over all nessages received to evalauet packet count and timings
 	for (i = 0; i < msgs_recvd; i++) {
             pbuf = sp->msg[i].msg_hdr.msg_iov->iov_base; // current msg buffer
-**************** NOT USING `mmsgrecv()` ******************************/
 
 	/* Dig the various counters out of the incoming UDP packet */
 	if (sp->test->udp_counters_64bit) {
@@ -258,9 +272,7 @@ iperf_udp_recv(struct iperf_stream *sp)
 	sp->prev_transit = transit;
 	sp->jitter += (d - sp->jitter) / 16.0;
 
-/**************** NOT USING `mmsgrecv()` ******************************
 	} // for over all received messages
-**************** NOT USING `mmsgrecv()` ******************************/
 
     } /* if state is TEST_RUNNING */
     else {
@@ -284,6 +296,26 @@ iperf_udp_send(struct iperf_stream *sp)
     struct iperf_time before;
     char *buf = sp->buffer;
     uint32_t  sec, usec;
+
+
+    long long count;
+    int fd;
+    struct perf_event_attr pe;
+    
+    memset(&pe, 0, sizeof(struct perf_event_attr));
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(struct perf_event_attr);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    // Don't count hypervisor events.
+    pe.exclude_hv = 1;  
+
+    fd = perf_event_open(&pe, 0, getpid(),-1,0);
+    if (fd == -1) {
+        printf("Error opening leader %llx\n", pe.config);
+        exit(EXIT_FAILURE);
+    }
 
 #ifdef HAVE_SENDMMSG
     int i, j, k;
@@ -332,12 +364,21 @@ iperf_udp_send(struct iperf_stream *sp)
 	    /* Sending messages and making sure all packets are sent */
 	    i = 0;	/* count of messages sent */
 	    r = 0;	/* total bytes sent */
+
+        ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+        ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
+
 	    while (i < sp->sendmmsg_buffered_packets_count) {
 	        j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
 		if (j < 0) {
 		    r = j;
 		    break;
 		}
+
+        ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+        read(fd, &count, sizeof(long long));
+
+        printf("Used %lld instructions\n", count);
 
 		if (sp->test->debug && i+j < sp->sendmmsg_buffered_packets_count)
                     printf("sendmmsg() sent only %d messges out of %d still bufferred\n",
