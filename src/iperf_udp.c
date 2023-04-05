@@ -116,6 +116,25 @@ iperf_udp_recv(struct iperf_stream *sp)
     int i;
     char *pbuf;
 
+    long long count;
+    int fd;
+    struct perf_event_attr pe;
+    
+    memset(&pe, 0, sizeof(struct perf_event_attr));
+    pe.type = PERF_TYPE_HARDWARE;
+    pe.size = sizeof(struct perf_event_attr);
+    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
+    pe.disabled = 1;
+    pe.exclude_kernel = 1;
+    // Don't count hypervisor events.
+    pe.exclude_hv = 1;  
+
+    fd = perf_event_open(&pe, 0, getpid(),-1,0);
+    if (fd == -1) {
+        printf("Error opening leader %llx\n", pe.config);
+        exit(EXIT_FAILURE);
+    }
+
     // Select message reading method
 #ifdef HAVE_SEND_RECVMMSG
 
@@ -126,8 +145,10 @@ iperf_udp_recv(struct iperf_stream *sp)
 	tmo.tv_sec = sp->settings->rcv_timeout.secs;
 	tmo.tv_nsec = sp->settings->rcv_timeout.usecs;
 
+    ioctl(fd, PERF_EVENT_IOC_RESET, 0);
+    ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
         // Receive at least one message
-        do {
+    do {
 	    msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
 	} while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
         if (msgs_recvd <= 0) {
@@ -137,6 +158,11 @@ iperf_udp_recv(struct iperf_stream *sp)
                 r += sp->msg[i].msg_hdr.msg_iov->iov_len;
             }
         } 
+
+    ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
+    read(fd, &count, sizeof(long long));
+
+    printf("Used %lld instructions\n", count);
     } // recvmmsg
     else
 #endif // HAVE_SEND_RECVMMSG
