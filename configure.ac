@@ -54,7 +54,7 @@ LT_INIT
 
 # Add -Wall if we are using GCC.
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall"
+  CFLAGS="$CFLAGS -Wall -O3"
 fi
 
 # Check if enable profiling

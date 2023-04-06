@@ -48,6 +48,9 @@
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
 
+/* Define to 1 if you have the `recvmmsg' function. */
+#undef HAVE_RECVMMSG
+
 /* Define to 1 if you have the `sched_setaffinity' function. */
 #undef HAVE_SCHED_SETAFFINITY
 
@@ -56,6 +59,12 @@
 
 /* Define to 1 if you have the `sendfile' function. */
 #undef HAVE_SENDFILE
+
+/* Define to 1 if you have the `sendmmsg' function. */
+#undef HAVE_SENDMMSG
+
+/* Have sendmmsg/recvmmsg functions. */
+#undef HAVE_SEND_RECVMMSG
 
 /* Define to 1 if you have the `SetProcessAffinityMask' function. */
 #undef HAVE_SETPROCESSAFFINITYMASK

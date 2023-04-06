@@ -435,9 +435,12 @@ iperf_run_server(struct iperf_test *test)
     int64_t timeout_us;
     int64_t rcv_timeout_us;
 
-    if (test->logfile)
+    if (test->logfile){
         if (iperf_open_logfile(test) < 0)
             return -1;
+        if (iperf_open_instr_logfile(test) < 0)
+            return -1;
+        } 
 
     if (test->affinity != -1)
 	if (iperf_setaffinity(test, test->affinity) != 0)

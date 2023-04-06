@@ -238,6 +238,12 @@ iperf_get_test_outfile (struct iperf_test *ipt)
     return ipt->outfile;
 }
 
+FILE *
+iperf_get_test_instr_outfile (struct iperf_test *ipt)
+{
+    return ipt->instr_outfile;
+}
+
 int
 iperf_get_test_socket_bufsize(struct iperf_test *ipt)
 {
@@ -467,6 +473,11 @@ void
 iperf_set_test_logfile(struct iperf_test *ipt, const char *logfile)
 {
     ipt->logfile = strdup(logfile);
+}
+
+void iperf_set_test_instr_logfile(struct iperf_test *ipt, const char *instr_logfile)
+{
+    ipt->instr_logfile = strdup(instr_logfile);
 }
 
 void
@@ -1389,8 +1400,15 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 	    case 'I':
 		test->pidfile = strdup(optarg);
 	        break;
-	    case OPT_LOGFILE:
-		test->logfile = strdup(optarg);
+	    case OPT_LOGFILE: ;
+        char* logfile_with_extension;
+        logfile_with_extension = malloc(strlen(optarg)+5);
+        strcpy(logfile_with_extension, optarg);
+        strcat(logfile_with_extension, ".csv");
+		test->logfile = strdup(logfile_with_extension);
+        strcat(optarg, "_instr.csv");
+        test->instr_logfile = strdup(optarg);
+        free(logfile_with_extension);
 		break;
 	    case OPT_FORCEFLUSH:
 		test->forceflush = 1;
@@ -1640,6 +1658,22 @@ int iperf_open_logfile(struct iperf_test *test)
 {
     test->outfile = fopen(test->logfile, "a+");
     if (test->outfile == NULL) {
+        i_errno = IELOGFILE;
+        return -1;
+    }
+
+    return 0;
+}
+
+
+/// @brief Open the file specified by test->logfile and set test->inst_outfile to its' FD.
+/// @param test 
+/// @return 
+int iperf_open_instr_logfile(struct iperf_test *test)
+{
+    test->instr_outfile = fopen(test->instr_logfile, "a+");
+    if(test->instr_outfile == NULL)
+    {
         i_errno = IELOGFILE;
         return -1;
     }
@@ -2852,6 +2886,15 @@ iperf_free_test(struct iperf_test *test)
 	    fclose(test->outfile);
 	    test->outfile = NULL;
 	}
+    }
+
+    if (test->instr_logfile){
+        free(test->instr_logfile);
+        test->instr_logfile = NULL;
+        if (test->instr_outfile){
+            fclose(test->instr_outfile);
+            test->instr_outfile = NULL;
+        }
     }
 
     if (test->server_output_text) {
@@ -4715,6 +4758,7 @@ iperf_printf(struct iperf_test *test, const char* format, ...)
 int
 iflush(struct iperf_test *test)
 {
+    fflush(test->instr_outfile);
     return fflush(test->outfile);
 }
 

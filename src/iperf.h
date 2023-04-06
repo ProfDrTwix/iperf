@@ -309,6 +309,8 @@ struct iperf_test
 
     char     *logfile;				/* --logfile option */
     FILE     *outfile;
+    char     *instr_logfile;
+    FILE     *instr_outfile;
 
     int       ctrl_sck;
     int       listener;
