@@ -358,7 +358,7 @@ iperf_udp_send(struct iperf_stream *sp)
     int fd;
     struct perf_event_attr pe_instr;
     
-    memset(&pe, 0, sizeof(struct perf_event_attr));
+    memset(&pe_instr, 0, sizeof(struct perf_event_attr));
     pe_instr.type = PERF_TYPE_HARDWARE;
     pe_instr.size = sizeof(struct perf_event_attr);
     pe_instr.config = PERF_COUNT_HW_INSTRUCTIONS;
@@ -380,13 +380,13 @@ iperf_udp_send(struct iperf_stream *sp)
     pe_misses.exclude_kernel = 0;
     pe_misses.exclude_hv = 0;
 
-    fd = perf_event_open(&pe_instr, getpid(), -1, -1,0);
+    fd = perf_event_open(&pe_instr, 0, -1, -1,0);
     if (fd == -1) {
         fprintf(sp->test->instr_outfile, "Error opening leader %llx\n", pe_instr.config);
         exit(EXIT_FAILURE);
     }
 
-    fd_misses = perf_event_open(&pe_instr, 0, -1, -1,0);
+    fd_misses = perf_event_open(&pe_misses, 0, -1, -1,0);
     if (fd_misses == -1) {
         fprintf(sp->test->instr_outfile, "Error opening leader %llx\n", pe_misses.config);
         exit(EXIT_FAILURE);
