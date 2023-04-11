@@ -1678,6 +1678,8 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
+    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; \n");
+
     return 0;
 }
 
