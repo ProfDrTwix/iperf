@@ -75,18 +75,6 @@
 # endif
 #endif
 
-
-long
-perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
-                int cpu, int group_fd, unsigned long flags)
-{
-    int ret;
-    
-    ret = syscall(SYS_perf_event_open, hw_event, pid, cpu,
-                    group_fd, flags);
-    return ret;
-}
-
 /* iperf_udp_recv
  *
  * receives the data for UDP
@@ -117,44 +105,9 @@ iperf_udp_recv(struct iperf_stream *sp)
     int i;
     char *pbuf;
 
-    long long count;
-    int fd;
-    struct perf_event_attr pe;
-    
-    memset(&pe, 0, sizeof(struct perf_event_attr));
-    pe.type = PERF_TYPE_HARDWARE;
-    pe.size = sizeof(struct perf_event_attr);
-    pe.config = PERF_COUNT_HW_INSTRUCTIONS;
-    pe.config1 = PERF_COUNT_HW_CACHE_MISSES;
-    pe.disabled = 1;
-    pe.exclude_kernel = 0;
-    // Don't count hypervisor events.
-    pe.exclude_hv = 1;  
-
-
-    long long misses;
-    int fd_misses;
-    struct perf_event_attr pe_misses;
-
-    memset(&pe_misses, 0, sizeof(struct perf_event_attr));
-    pe_misses.type = PERF_TYPE_HARDWARE;
-    pe_misses.size = sizeof(struct perf_event_attr);
-    pe_misses.config = PERF_COUNT_HW_CACHE_MISSES;
-    pe_misses.disabled = 1;
-    pe_misses.exclude_kernel = 0;
-    pe_misses.exclude_hv = 0;
-
-    fd = perf_event_open(&pe, 0, -1,-1,0);
-    if (fd == -1) {
-        printf("Error opening leader %llx\r\n", pe.config);
-        exit(EXIT_FAILURE);
-    }
-
-    fd_misses = perf_event_open(&pe_misses, 0, -1, -1,0);
-    if (fd_misses == -1) {
-        fprintf(sp->test->instr_outfile, "Error opening leader %llx\n", pe_misses.config);
-        exit(EXIT_FAILURE);
-    }
+    long long val1, val2;
+    char buf_instr[4096];
+    struct read_format* rf = (struct read_format*) buf_instr;
 
     // Select message reading method
 #ifdef HAVE_SEND_RECVMMSG
@@ -166,25 +119,31 @@ iperf_udp_recv(struct iperf_stream *sp)
         tmo.tv_sec = sp->settings->rcv_timeout.secs;
         tmo.tv_nsec = sp->settings->rcv_timeout.usecs;
 
-    ioctl(fd, PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd_misses, PERF_EVENT_IOC_RESET, 0);
-    ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
-    ioctl(fd_misses, PERF_EVENT_IOC_ENABLE, 0);
+        ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
         // Receive at least one message
     do {
-            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
+
+            ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITALL, &tmo);
+
+            ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+
+
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 
-        ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
-        ioctl(fd_misses, PERF_EVENT_IOC_DISABLE, 0);
-        read(fd, &count, sizeof(long long));
-        read(fd_misses, &misses, sizeof(long long));
 
-        fprintf(sp->test->instr_outfile, "%d;", msgs_recvd);
-        fprintf(sp->test->instr_outfile, "%lld;", count);
-        fprintf(sp->test->instr_outfile, "%lld;\r\n", misses);
-        close(fd);
-        close(fd_misses);
+        read(sp->test->fd1, buf_instr, sizeof(buf_instr));
+
+        for (int f = 0; f < rf->nr; f++) {
+          if (rf->values[f].id == sp->test->id1) {
+            val1 = rf->values[f].value;
+          } else if (rf->values[f].id == sp->test->id2) {
+            val2 = rf->values[f].value;
+          }
+        }
+
+        fprintf(sp->test->instr_outfile, "%d;%lld;%lld;\r\n", msgs_recvd ,val1,val2);
 
         if (msgs_recvd <= 0) {
             r = msgs_recvd;
@@ -353,44 +312,9 @@ iperf_udp_send(struct iperf_stream *sp)
     char *buf = sp->buffer;
     uint32_t  sec, usec;
 
-
-    long long count;
-    int fd;
-    struct perf_event_attr pe_instr;
-    
-    memset(&pe_instr, 0, sizeof(struct perf_event_attr));
-    pe_instr.type = PERF_TYPE_HARDWARE;
-    pe_instr.size = sizeof(struct perf_event_attr);
-    pe_instr.config = PERF_COUNT_HW_INSTRUCTIONS;
-    pe_instr.config1 = PERF_COUNT_HW_CACHE_MISSES;
-    pe_instr.disabled = 1;
-    pe_instr.exclude_kernel = 0;
-    // Don't count hypervisor events.
-    pe_instr.exclude_hv = 1;  
-
-    long long misses;
-    int fd_misses;
-    struct perf_event_attr pe_misses;
-
-    memset(&pe_misses, 0, sizeof(struct perf_event_attr));
-    pe_misses.type = PERF_TYPE_HARDWARE;
-    pe_misses.size = sizeof(struct perf_event_attr);
-    pe_misses.config = PERF_COUNT_HW_CACHE_MISSES;
-    pe_misses.disabled = 1;
-    pe_misses.exclude_kernel = 0;
-    pe_misses.exclude_hv = 0;
-
-    fd = perf_event_open(&pe_instr, 0, -1, -1,0);
-    if (fd == -1) {
-        fprintf(sp->test->instr_outfile, "Error opening leader %llx\n", pe_instr.config);
-        exit(EXIT_FAILURE);
-    }
-
-    fd_misses = perf_event_open(&pe_misses, 0, -1, -1,0);
-    if (fd_misses == -1) {
-        fprintf(sp->test->instr_outfile, "Error opening leader %llx\n", pe_misses.config);
-        exit(EXIT_FAILURE);
-    }
+    long long val1, val2;
+    char buf_instr[4096];
+    struct read_format* rf = (struct read_format*) buf_instr;
 
 #ifdef HAVE_SENDMMSG
     int i, j, k;
@@ -440,29 +364,24 @@ iperf_udp_send(struct iperf_stream *sp)
             i = 0;      /* count of messages sent */
             r = 0;      /* total bytes sent */
 
-        fprintf(sp->test->instr_outfile, "%d;", sp->sendmmsg_buffered_packets_count);
+            ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
 
-        ioctl(fd, PERF_EVENT_IOC_RESET, 0);
-        ioctl(fd_misses, PERF_EVENT_IOC_RESET, 0);
-        ioctl(fd, PERF_EVENT_IOC_ENABLE, 0);
-        ioctl(fd_misses, PERF_EVENT_IOC_ENABLE, 0);
+            fprintf(sp->test->instr_outfile, "%d;",sp->sendmmsg_buffered_packets_count);
 
             while (i < sp->sendmmsg_buffered_packets_count) {
+
+                
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+
                 j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
+
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            
                 if (j < 0) {
                     r = j;
                     break;
                 }
 
-        ioctl(fd, PERF_EVENT_IOC_DISABLE, 0);
-        ioctl(fd_misses, PERF_EVENT_IOC_DISABLE, 0);
-        read(fd, &count, sizeof(long long));
-        read(fd_misses, &misses, sizeof(long long));
-
-        fprintf(sp->test->instr_outfile, "%lld;", count);
-        fprintf(sp->test->instr_outfile, "%lld;\r\n", misses);
-        close(fd_misses);
-        close(fd);
                 if (sp->test->debug && i+j < sp->sendmmsg_buffered_packets_count)
                     printf("sendmmsg() sent only %d messges out of %d still bufferred\n",
                            j, sp->sendmmsg_buffered_packets_count-i);
@@ -472,6 +391,17 @@ iperf_udp_send(struct iperf_stream *sp)
                 }
                 i += j; /* accumulate number of messages received */
             }
+
+            read(sp->test->fd1, buf_instr, sizeof(buf_instr));
+            for (int f = 0; f < rf->nr; f++) {
+              if (rf->values[f].id == sp->test->id1) {
+                val1 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id2) {
+                val2 = rf->values[f].value;
+              }
+            }
+
+            fprintf(sp->test->instr_outfile, "%lld;%lld;\r\n", val1,val2);
 
             if (sp->test->debug)
                 printf("sendmmsg() %s. Sent %d messges out of %d bufferred. %d bytes sent. (errno=%d: %s)\n",

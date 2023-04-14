@@ -39,6 +39,15 @@
 #ifndef _GNU_SOURCE
 # define _GNU_SOURCE
 #endif
+#include <sys/time.h>
+#include <sys/select.h>
+#include <linux/perf_event.h>
+#include <sys/ioctl.h>
+#include <inttypes.h>
+#include <stdio.h>
+#include <linux/hw_breakpoint.h>
+#include <sys/syscall.h>
+#include <errno.h>
 #ifdef HAVE_LINUX_TCP_H
 #include <linux/tcp.h>
 #else
@@ -278,6 +287,14 @@ enum iperf_mode {
 	BIDIRECTIONAL = -1
 };
 
+struct read_format {
+  uint64_t nr;
+  struct {
+    long long value;
+    uint64_t id;
+  } values[];
+};
+
 struct iperf_test
 {
     char      role;                             /* 'c' lient or 's' erver */
@@ -408,6 +425,11 @@ struct iperf_test
     /* Server output (use on server side only) */
     TAILQ_HEAD(iperf_textlisthead, iperf_textline) server_output_list;
 
+
+    //Performance Counter perf_event_open
+    struct perf_event_attr pea;
+    int fd1, fd2;
+    uint64_t id1, id2;
 };
 
 /* default settings */

@@ -2637,6 +2637,31 @@ iperf_new_test()
     }
     memset(test->settings, 0, sizeof(struct iperf_settings));
 
+    memset(&test->pea, 0, sizeof(struct perf_event_attr));
+    test->pea.type = PERF_TYPE_HARDWARE;
+    test->pea.size = sizeof(struct perf_event_attr);
+    test->pea.config = PERF_COUNT_HW_INSTRUCTIONS;
+    test->pea.disabled = 1;
+    test->pea.exclude_kernel = 0;
+    // Don't count hypervisor events.
+    test->pea.exclude_hv = 1;  
+    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+    test->fd1 = syscall(__NR_perf_event_open, &test->pea, 0, -1, -1, 0);
+    ioctl(test->fd1, PERF_EVENT_IOC_ID, &test->id1);
+
+    memset(&test->pea, 0, sizeof(struct perf_event_attr));
+    test->pea.type = PERF_TYPE_HARDWARE;
+    test->pea.size = sizeof(struct perf_event_attr);
+    test->pea.config = PERF_COUNT_HW_CACHE_MISSES;
+    test->pea.disabled = 1;
+    test->pea.exclude_kernel = 0;
+    test->pea.exclude_hv = 1;
+    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+    test->fd2 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+    ioctl(test->fd2, PERF_EVENT_IOC_ID, &test->id2);
+
     test->bitrate_limit_intervals_traffic_bytes = (iperf_size_t *) malloc(sizeof(iperf_size_t) * MAX_INTERVAL);
     if (!test->bitrate_limit_intervals_traffic_bytes) {
         free(test);
@@ -2804,6 +2829,11 @@ iperf_free_test(struct iperf_test *test)
 {
     struct protocol *prot;
     struct iperf_stream *sp;
+
+    if(test->fd1)
+    close(test->fd1);
+    if(test->fd2)
+    close(test->fd2);
 
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {
