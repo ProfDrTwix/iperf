@@ -147,7 +147,7 @@ iperf_udp_recv(struct iperf_stream *sp)
           } 
         }
 
-        fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
+        fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;\r\n", msgs_recvd, val1,val2,val3,val4);
 
         if (msgs_recvd <= 0) {
             r = msgs_recvd;

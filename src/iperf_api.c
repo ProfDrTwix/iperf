@@ -1678,7 +1678,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; Contextswitches; Branchmisses \n");
+    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; Contextswitches; Branchmisses; \n");
 
     return 0;
 }
