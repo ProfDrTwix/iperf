@@ -105,7 +105,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     int i;
     char *pbuf;
 
-    long long val1, val2;
+    long long val1, val2, val3, val4;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -125,7 +125,7 @@ iperf_udp_recv(struct iperf_stream *sp)
 
             ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
 
-            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITALL, &tmo);
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
 
             ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
 
@@ -140,10 +140,14 @@ iperf_udp_recv(struct iperf_stream *sp)
             val1 = rf->values[f].value;
           } else if (rf->values[f].id == sp->test->id2) {
             val2 = rf->values[f].value;
-          }
+          } else if (rf->values[f].id == sp->test->id3) {
+            val3 = rf->values[f].value;
+          } else if (rf->values[f].id == sp->test->id4) {
+            val4 = rf->values[f].value;
+          } 
         }
 
-        fprintf(sp->test->instr_outfile, "%d;%lld;%lld;\r\n", msgs_recvd ,val1,val2);
+        fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
 
         if (msgs_recvd <= 0) {
             r = msgs_recvd;
@@ -312,7 +316,7 @@ iperf_udp_send(struct iperf_stream *sp)
     char *buf = sp->buffer;
     uint32_t  sec, usec;
 
-    long long val1, val2;
+    long long val1, val2, val3, val4;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -398,10 +402,14 @@ iperf_udp_send(struct iperf_stream *sp)
                 val1 = rf->values[f].value;
               } else if (rf->values[f].id == sp->test->id2) {
                 val2 = rf->values[f].value;
-              }
+              } else if (rf->values[f].id == sp->test->id3) {
+                val3 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id4) {
+                val4 = rf->values[f].value;
+              } 
             }
 
-            fprintf(sp->test->instr_outfile, "%lld;%lld;\r\n", val1,val2);
+            fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
 
             if (sp->test->debug)
                 printf("sendmmsg() %s. Sent %d messges out of %d bufferred. %d bytes sent. (errno=%d: %s)\n",

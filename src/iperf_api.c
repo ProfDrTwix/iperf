@@ -1678,7 +1678,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; \n");
+    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; Contextswitches; Branchmisses \n");
 
     return 0;
 }
@@ -2662,6 +2662,30 @@ iperf_new_test()
     test->fd2 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
     ioctl(test->fd2, PERF_EVENT_IOC_ID, &test->id2);
 
+    memset(&test->pea, 0, sizeof(struct perf_event_attr));
+    test->pea.type = PERF_TYPE_SOFTWARE;
+    test->pea.size = sizeof(struct perf_event_attr);
+    test->pea.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
+    test->pea.disabled = 1;
+    test->pea.exclude_kernel = 0;
+    test->pea.exclude_hv = 1;
+    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+    test->fd3 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+    ioctl(test->fd3, PERF_EVENT_IOC_ID, &test->id3);
+
+     memset(&test->pea, 0, sizeof(struct perf_event_attr));
+    test->pea.type = PERF_TYPE_HARDWARE;
+    test->pea.size = sizeof(struct perf_event_attr);
+    test->pea.config = PERF_COUNT_HW_BRANCH_MISSES;
+    test->pea.disabled = 1;
+    test->pea.exclude_kernel = 0;
+    test->pea.exclude_hv = 1;
+    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+    test->fd4 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+    ioctl(test->fd4, PERF_EVENT_IOC_ID, &test->id4);
+
     test->bitrate_limit_intervals_traffic_bytes = (iperf_size_t *) malloc(sizeof(iperf_size_t) * MAX_INTERVAL);
     if (!test->bitrate_limit_intervals_traffic_bytes) {
         free(test);
@@ -2834,6 +2858,10 @@ iperf_free_test(struct iperf_test *test)
     close(test->fd1);
     if(test->fd2)
     close(test->fd2);
+    if(test->fd3)
+    close(test->fd3);
+    if(test->fd4)
+    close(test->fd4);
 
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {

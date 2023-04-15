@@ -428,8 +428,8 @@ struct iperf_test
 
     //Performance Counter perf_event_open
     struct perf_event_attr pea;
-    int fd1, fd2;
-    uint64_t id1, id2;
+    int fd1, fd2, fd3, fd4;
+    uint64_t id1, id2, id3, id4;
 };
 
 /* default settings */

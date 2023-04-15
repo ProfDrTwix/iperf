@@ -124,7 +124,7 @@ sigend_handler(int sig)
 
 /**************************************************************************/
 static int
-run(struct iperf_test *test)
+ run(struct iperf_test *test)
 {
     /* Termination signals. */
     iperf_catch_sigend(sigend_handler);
