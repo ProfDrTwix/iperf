@@ -124,14 +124,13 @@ iperf_udp_recv(struct iperf_stream *sp)
         // Receive at least one message
     do {
         if(sp->test->kernelspace || sp->test->userspace)
+        {
             ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-
-            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
-
-        if(sp->test->kernelspace || sp->test->userspace)
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
             ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
-
-
+        }
+        else
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 
         if(sp->test->kernelspace || sp->test->userspace)
@@ -149,7 +148,7 @@ iperf_udp_recv(struct iperf_stream *sp)
               } 
             }
 
-            fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;\r\n", msgs_recvd, val1,val2,val3,val4);
+            fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;%d;\r\n", msgs_recvd, val1,val2,val3,val4,sp->test->MSG_OPTIONS);
         }
         
         if (msgs_recvd <= 0) {
@@ -381,7 +380,7 @@ iperf_udp_send(struct iperf_stream *sp)
                 if(sp->test->kernelspace || sp->test->userspace)
                 {
                     ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
+                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
                     ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
                 }
                 else
@@ -420,7 +419,7 @@ iperf_udp_send(struct iperf_stream *sp)
                   } 
                 }
 
-                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;%d\r\n", val1,val2,val3,val4,sp->test->MSG_OPTIONS);
             }
 
             if (sp->test->debug)

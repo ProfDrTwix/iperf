@@ -943,6 +943,23 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 {
     static struct option longopts[] =
     {
+        {"MSG_BATCH", no_argument, NULL, OPT_MSG_BATCH},
+        {"MSG_CMSG_CLOEXEC", no_argument, NULL, OPT_MSG_CMSG_CLOEXEC},
+        {"MSG_CONFIRM", no_argument, NULL, OPT_MSG_CONFIRM},
+        {"MSG_CTRUNC", no_argument, NULL, OPT_MSG_CTRUNC},
+        {"MSG_DONTWAIT", no_argument, NULL, OPT_MSG_DONTWAIT},
+        {"MSG_EOR", no_argument, NULL, OPT_MSG_EOR},
+        {"MSG_ERRQUEUE", no_argument, NULL, OPT_MSG_ERRQUEUE},
+        {"MSG_FASTOPEN", no_argument, NULL, OPT_MSG_FIN},
+        {"MSG_FIN", no_argument, NULL, OPT_MSG_MORE},
+        {"MSG_NOSIGNAL", no_argument, NULL, OPT_MSG_NOSIGNAL},
+        {"MSG_RST", no_argument, NULL, OPT_MSG_RST},
+        {"MSG_SYN", no_argument, NULL, OPT_MSG_SYN},
+        {"MSG_TRUNC", no_argument, NULL, OPT_MSG_TRUNC},
+        {"MSG_TRYHARD", no_argument, NULL, OPT_MSG_TRYHARD},
+        {"MSG_WAITALL", no_argument, NULL, OPT_MSG_WAITALL},
+        {"MSG_WAITFORONE", no_argument, NULL, OPT_MSG_WAITFORONE},
+        {"MSG_ZEROCOPY", no_argument, NULL, OPT_MSG_ZEROCOPY},
         {"benchmark-kernel", no_argument, NULL, 'E'},
         {"benchmark-userspace", no_argument, NULL, 'U'},
         {"port", required_argument, NULL, 'p'},
@@ -1046,6 +1063,57 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 
     while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
         switch (flag) {
+            case OPT_MSG_CTRUNC:
+                test->MSG_OPTIONS |= OPT_MSG_CTRUNC;
+                break;
+            case OPT_MSG_TRUNC:	
+                test->MSG_OPTIONS |= OPT_MSG_TRUNC;
+                break;
+            case OPT_MSG_DONTWAIT:	
+                test->MSG_OPTIONS |= OPT_MSG_DONTWAIT;
+                break;
+            case OPT_MSG_EOR:
+                test->MSG_OPTIONS |= OPT_MSG_EOR;
+                break;
+            case OPT_MSG_WAITALL:
+                test->MSG_OPTIONS |= OPT_MSG_WAITALL;
+                break;
+            case OPT_MSG_FIN:	
+                test->MSG_OPTIONS |= OPT_MSG_FIN;
+                break;
+            case OPT_MSG_SYN:
+                test->MSG_OPTIONS |= OPT_MSG_SYN;
+                break;
+            case OPT_MSG_CONFIRM:
+                test->MSG_OPTIONS |= OPT_MSG_CONFIRM;
+                break;
+            case OPT_MSG_RST:
+                test->MSG_OPTIONS |= OPT_MSG_RST;
+                break;
+            case OPT_MSG_ERRQUEUE:
+                test->MSG_OPTIONS |= OPT_MSG_ERRQUEUE;
+                break;
+            case OPT_MSG_NOSIGNAL:
+                test->MSG_OPTIONS |= OPT_MSG_NOSIGNAL;
+                break;
+            case OPT_MSG_MORE:
+                test->MSG_OPTIONS |= OPT_MSG_MORE;
+                break;
+            case OPT_MSG_WAITFORONE:
+                test->MSG_OPTIONS |= OPT_MSG_WAITFORONE;
+                break;
+            case OPT_MSG_BATCH:
+                test->MSG_OPTIONS |= OPT_MSG_BATCH;
+                break;
+            case OPT_MSG_ZEROCOPY:
+                test->MSG_OPTIONS |= OPT_MSG_ZEROCOPY;
+                break;
+            case OPT_MSG_FASTOPEN:
+                test->MSG_OPTIONS |= OPT_MSG_FASTOPEN;
+                break;
+            case OPT_MSG_CMSG_CLOEXEC:
+                test->MSG_OPTIONS |= OPT_MSG_CMSG_CLOEXEC;
+                break;
             case 'E':
                 test->kernelspace = 1;
                 break;
@@ -1686,7 +1754,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; Contextswitches; Branchmisses; \n");
+    fprintf(test->instr_outfile, "Packets; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; \n");
 
     return 0;
 }
