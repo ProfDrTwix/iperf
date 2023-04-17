@@ -479,9 +479,12 @@ iperf_run_client(struct iperf_test * test)
     if (test->logfile){
         if (iperf_open_logfile(test) < 0)
             return -1;
-        if (iperf_open_instr_logfile(test) < 0)
-            return -1;
-        } 
+        if(test->kernelspace || test->userspace)
+        {
+            if (iperf_open_instr_logfile(test) < 0)
+                return -1;
+        }
+    } 
         
 
     if (test->affinity != -1)

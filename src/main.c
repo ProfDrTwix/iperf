@@ -176,6 +176,91 @@ static int
 	    iperf_delete_pidfile(test);
             break;
 	case 'c':
+
+        if(test->kernelspace || test->userspace)
+        {
+            if (test->debug)
+                printf("Setting perf_event_open with flags kernelspace: %d and userspace: %d\n", test->kernelspace, test->userspace);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_HARDWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_HW_INSTRUCTIONS;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            // Don't count hypervisor events.
+            test->pea.exclude_hv = 1;  
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd1 = syscall(__NR_perf_event_open, &test->pea, 0, -1, -1, 0);
+            ioctl(test->fd1, PERF_EVENT_IOC_ID, &test->id1);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_HARDWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_HW_CACHE_MISSES;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            test->pea.exclude_hv = 1;
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd2 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+            ioctl(test->fd2, PERF_EVENT_IOC_ID, &test->id2);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_SOFTWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            test->pea.exclude_hv = 1;
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd3 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+            ioctl(test->fd3, PERF_EVENT_IOC_ID, &test->id3);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_HARDWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_HW_BRANCH_MISSES;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            test->pea.exclude_hv = 1;
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd4 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+            ioctl(test->fd4, PERF_EVENT_IOC_ID, &test->id4);
+        }
+
+
 	    if (iperf_create_pidfile(test) < 0) {
 		i_errno = IEPIDFILE;
 		iperf_errexit(test, "error - %s", iperf_strerror(i_errno));

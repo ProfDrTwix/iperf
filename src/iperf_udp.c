@@ -119,36 +119,39 @@ iperf_udp_recv(struct iperf_stream *sp)
         tmo.tv_sec = sp->settings->rcv_timeout.secs;
         tmo.tv_nsec = sp->settings->rcv_timeout.usecs;
 
-        ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+        if(sp->test->kernelspace || sp->test->userspace)
+            ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
         // Receive at least one message
     do {
-
+        if(sp->test->kernelspace || sp->test->userspace)
             ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
 
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
 
+        if(sp->test->kernelspace || sp->test->userspace)
             ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
 
 
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 
+        if(sp->test->kernelspace || sp->test->userspace)
+        {
+            read(sp->test->fd1, buf_instr, sizeof(buf_instr));
+            for (int f = 0; f < rf->nr; f++) {
+              if (rf->values[f].id == sp->test->id1) {
+                val1 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id2) {
+                val2 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id3) {
+                val3 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id4) {
+                val4 = rf->values[f].value;
+              } 
+            }
 
-        read(sp->test->fd1, buf_instr, sizeof(buf_instr));
-
-        for (int f = 0; f < rf->nr; f++) {
-          if (rf->values[f].id == sp->test->id1) {
-            val1 = rf->values[f].value;
-          } else if (rf->values[f].id == sp->test->id2) {
-            val2 = rf->values[f].value;
-          } else if (rf->values[f].id == sp->test->id3) {
-            val3 = rf->values[f].value;
-          } else if (rf->values[f].id == sp->test->id4) {
-            val4 = rf->values[f].value;
-          } 
+            fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;\r\n", msgs_recvd, val1,val2,val3,val4);
         }
-
-        fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;\r\n", msgs_recvd, val1,val2,val3,val4);
-
+        
         if (msgs_recvd <= 0) {
             r = msgs_recvd;
         } else {
@@ -368,19 +371,24 @@ iperf_udp_send(struct iperf_stream *sp)
             i = 0;      /* count of messages sent */
             r = 0;      /* total bytes sent */
 
-            ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
-
-            fprintf(sp->test->instr_outfile, "%d;",sp->sendmmsg_buffered_packets_count);
+            if(sp->test->kernelspace || sp->test->userspace)
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
+            if(sp->test->kernelspace || sp->test->userspace)
+                fprintf(sp->test->instr_outfile, "%d;",sp->sendmmsg_buffered_packets_count);
 
             while (i < sp->sendmmsg_buffered_packets_count) {
 
-                
-                ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-
-                j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
-
-                ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
-            
+                if(sp->test->kernelspace || sp->test->userspace)
+                {
+                    ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
+                    ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+                }
+                else
+                {
+                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
+                }
+                    
                 if (j < 0) {
                     r = j;
                     break;
@@ -396,20 +404,24 @@ iperf_udp_send(struct iperf_stream *sp)
                 i += j; /* accumulate number of messages received */
             }
 
-            read(sp->test->fd1, buf_instr, sizeof(buf_instr));
-            for (int f = 0; f < rf->nr; f++) {
-              if (rf->values[f].id == sp->test->id1) {
-                val1 = rf->values[f].value;
-              } else if (rf->values[f].id == sp->test->id2) {
-                val2 = rf->values[f].value;
-              } else if (rf->values[f].id == sp->test->id3) {
-                val3 = rf->values[f].value;
-              } else if (rf->values[f].id == sp->test->id4) {
-                val4 = rf->values[f].value;
-              } 
-            }
 
-            fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
+            if(sp->test->kernelspace || sp->test->userspace)
+            {
+                read(sp->test->fd1, buf_instr, sizeof(buf_instr));
+                for (int f = 0; f < rf->nr; f++) {
+                  if (rf->values[f].id == sp->test->id1) {
+                    val1 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id2) {
+                    val2 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id3) {
+                    val3 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id4) {
+                    val4 = rf->values[f].value;
+                  } 
+                }
+
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;\r\n", val1,val2,val3,val4);
+            }
 
             if (sp->test->debug)
                 printf("sendmmsg() %s. Sent %d messges out of %d bufferred. %d bytes sent. (errno=%d: %s)\n",

@@ -943,6 +943,8 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 {
     static struct option longopts[] =
     {
+        {"benchmark-kernel", no_argument, NULL, 'E'},
+        {"benchmark-userspace", no_argument, NULL, 'U'},
         {"port", required_argument, NULL, 'p'},
         {"format", required_argument, NULL, 'f'},
         {"interval", required_argument, NULL, 'i'},
@@ -1042,8 +1044,14 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char *client_username = NULL, *client_rsa_public_key = NULL, *server_rsa_private_key = NULL;
 #endif /* HAVE_SSL */
 
-    while ((flag = getopt_long(argc, argv, "p:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
         switch (flag) {
+            case 'E':
+                test->kernelspace = 1;
+                break;
+            case 'U':
+                test->userspace = 1;
+                break;
             case 'p':
 		portno = atoi(optarg);
 		if (portno < 1 || portno > 65535) {
@@ -2629,6 +2637,8 @@ iperf_new_test()
     /* initialize everything to zero */
     memset(test, 0, sizeof(struct iperf_test));
 
+    memset(&test->pea, 0, sizeof(struct perf_event_attr));
+
     test->settings = (struct iperf_settings *) malloc(sizeof(struct iperf_settings));
     if (!test->settings) {
         free(test);
@@ -2636,55 +2646,6 @@ iperf_new_test()
 	return NULL;
     }
     memset(test->settings, 0, sizeof(struct iperf_settings));
-
-    memset(&test->pea, 0, sizeof(struct perf_event_attr));
-    test->pea.type = PERF_TYPE_HARDWARE;
-    test->pea.size = sizeof(struct perf_event_attr);
-    test->pea.config = PERF_COUNT_HW_INSTRUCTIONS;
-    test->pea.disabled = 1;
-    test->pea.exclude_kernel = 0;
-    // Don't count hypervisor events.
-    test->pea.exclude_hv = 1;  
-    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
-
-    test->fd1 = syscall(__NR_perf_event_open, &test->pea, 0, -1, -1, 0);
-    ioctl(test->fd1, PERF_EVENT_IOC_ID, &test->id1);
-
-    memset(&test->pea, 0, sizeof(struct perf_event_attr));
-    test->pea.type = PERF_TYPE_HARDWARE;
-    test->pea.size = sizeof(struct perf_event_attr);
-    test->pea.config = PERF_COUNT_HW_CACHE_MISSES;
-    test->pea.disabled = 1;
-    test->pea.exclude_kernel = 0;
-    test->pea.exclude_hv = 1;
-    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
-
-    test->fd2 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
-    ioctl(test->fd2, PERF_EVENT_IOC_ID, &test->id2);
-
-    memset(&test->pea, 0, sizeof(struct perf_event_attr));
-    test->pea.type = PERF_TYPE_SOFTWARE;
-    test->pea.size = sizeof(struct perf_event_attr);
-    test->pea.config = PERF_COUNT_SW_CONTEXT_SWITCHES;
-    test->pea.disabled = 1;
-    test->pea.exclude_kernel = 0;
-    test->pea.exclude_hv = 1;
-    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
-
-    test->fd3 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
-    ioctl(test->fd3, PERF_EVENT_IOC_ID, &test->id3);
-
-     memset(&test->pea, 0, sizeof(struct perf_event_attr));
-    test->pea.type = PERF_TYPE_HARDWARE;
-    test->pea.size = sizeof(struct perf_event_attr);
-    test->pea.config = PERF_COUNT_HW_BRANCH_MISSES;
-    test->pea.disabled = 1;
-    test->pea.exclude_kernel = 0;
-    test->pea.exclude_hv = 1;
-    test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
-
-    test->fd4 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
-    ioctl(test->fd4, PERF_EVENT_IOC_ID, &test->id4);
 
     test->bitrate_limit_intervals_traffic_bytes = (iperf_size_t *) malloc(sizeof(iperf_size_t) * MAX_INTERVAL);
     if (!test->bitrate_limit_intervals_traffic_bytes) {
