@@ -125,6 +125,8 @@ netdial(int domain, int proto, const char *local, const char *bind_dev, int loca
 {
     struct addrinfo hints, *local_res = NULL, *server_res = NULL;
     int s, saved_errno;
+    int zero_copy;
+    int optval;
 
     if (local) {
         memset(&hints, 0, sizeof(hints));
@@ -146,6 +148,15 @@ netdial(int domain, int proto, const char *local, const char *bind_dev, int loca
 	    freeaddrinfo(local_res);
 	freeaddrinfo(server_res);
         return -1;
+    }
+
+    zero_copy = 1;
+    optval = 1;
+
+
+    if(zero_copy)
+    {
+        setsockopt(s, SOL_SOCKET, SO_ZEROCOPY, &optval, sizeof(optval));
     }
 
     if (bind_dev) {
