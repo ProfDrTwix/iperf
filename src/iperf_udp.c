@@ -148,7 +148,7 @@ iperf_udp_recv(struct iperf_stream *sp)
               } 
             }
 
-            fprintf(sp->test->instr_outfile, "%d;%lld;%lld;%lld;%lld;%d;\r\n", msgs_recvd, val1,val2,val3,val4,sp->test->MSG_OPTIONS);
+            fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS);
         }
         
         if (msgs_recvd <= 0) {
@@ -372,8 +372,6 @@ iperf_udp_send(struct iperf_stream *sp)
 
             if(sp->test->kernelspace || sp->test->userspace)
                 ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
-            if(sp->test->kernelspace || sp->test->userspace)
-                fprintf(sp->test->instr_outfile, "%d;",sp->sendmmsg_buffered_packets_count);
 
             while (i < sp->sendmmsg_buffered_packets_count) {
 
@@ -419,7 +417,7 @@ iperf_udp_send(struct iperf_stream *sp)
                   } 
                 }
 
-                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%lld;%d\r\n", val1,val2,val3,val4,sp->test->MSG_OPTIONS);
+                fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS);
             }
 
             if (sp->test->debug)
