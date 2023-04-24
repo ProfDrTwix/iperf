@@ -188,6 +188,7 @@ struct iperf_settings
     int	      connect_timeout;	    /* socket connection timeout, in ms */
     int       idle_timeout;         /* server idle time timeout */
     int       send_recvmmsg;        /* whether sendmmsg/recvmmsg should be used - mainly per the -Z option */
+    int       send_recvmsg;
     struct iperf_time rcv_timeout;  /* Timeout for receiving messages in active mode, in us */
 };
 
@@ -349,7 +350,8 @@ struct iperf_test
     int       bidirectional;                    /* --bidirectional */
     int	      verbose;                          /* -V option - verbose mode */
     int	      json_output;                      /* -J option - JSON output */
-    int	      zerocopy;                         /* -Z option - use sendfile */
+    int	      zerocopy;                         /* -Z option - use sendfile/sendmmsg */
+    int       zerocopy_msg;                     /* -z option - sendmsg*/
     int       debug;				/* -d option - enable debug */
     int	      get_server_output;		/* --get-server-output */
     int	      udp_counters_64bit;		/* --use-64-bit-udp-counters */
@@ -429,8 +431,8 @@ struct iperf_test
     //Performance Counter perf_event_open
     int userspace, kernelspace;
     struct perf_event_attr pea;
-    int fd1, fd2, fd3, fd4;
-    uint64_t id1, id2, id3, id4;
+    int fd1, fd2, fd3, fd4, fd5, fd6;
+    uint64_t id1, id2, id3, id4, id5, id6;
     int MSG_OPTIONS;
 };
 

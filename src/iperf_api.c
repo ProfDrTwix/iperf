@@ -104,6 +104,7 @@ static int JSON_write(int fd, cJSON *json);
 static void print_interval_results(struct iperf_test *test, struct iperf_stream *sp, cJSON *json_interval_streams);
 static cJSON *JSON_read(int fd);
 void iperf_init_send_recvmmsg(struct iperf_test *test);
+void iperf_init_send_recvmsg(struct iperf_test *test);
 
 
 /*************************** Print usage functions ****************************/
@@ -960,6 +961,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
         {"MSG_WAITALL", no_argument, NULL, OPT_MSG_WAITALL},
         {"MSG_WAITFORONE", no_argument, NULL, OPT_MSG_WAITFORONE},
         {"MSG_ZEROCOPY", no_argument, NULL, OPT_MSG_ZEROCOPY},
+        {"zerocopy_msg", no_argument, NULL, 'z'},
         {"benchmark-kernel", no_argument, NULL, 'E'},
         {"benchmark-userspace", no_argument, NULL, 'U'},
         {"port", required_argument, NULL, 'p'},
@@ -1061,7 +1063,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char *client_username = NULL, *client_rsa_public_key = NULL, *server_rsa_private_key = NULL;
 #endif /* HAVE_SSL */
 
-    while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZzO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
         switch (flag) {
             case OPT_MSG_CTRUNC:
                 test->MSG_OPTIONS |= OPT_MSG_CTRUNC;
@@ -1119,6 +1121,10 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 break;
             case 'U':
                 test->userspace = 1;
+                break;
+            case 'z':
+                test->zerocopy_msg = 1;
+                test->zerocopy = 0;
                 break;
             case 'p':
 		portno = atoi(optarg);
@@ -1391,6 +1397,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                     return -1;
                 }
                 test->zerocopy = 1;
+                test->zerocopy_msg = 0;
 		client_flag = 1;
                 break;
             case OPT_REPEATING_PAYLOAD:
@@ -1710,6 +1717,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 
     /* Set whether send/recvmmsg is supported along with related settings */
     iperf_init_send_recvmmsg(test);
+    iperf_init_send_recvmsg(test);
 
     /* Show warning if JSON output is used with explicit report format */
     if ((test->json_output) && (test->settings->unit_format != 'a')) {
@@ -1754,7 +1762,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; \n");
+    fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_Cycles;\n");
 
     return 0;
 }
@@ -2035,6 +2043,7 @@ iperf_exchange_parameters(struct iperf_test *test)
         
         /* Set whether send/recvmmsg is supported along with related settings */
         iperf_init_send_recvmmsg(test);
+        iperf_init_send_recvmsg(test);
 
 #if defined(HAVE_SSL)
         if (test_is_authorized(test) < 0){
@@ -2805,6 +2814,7 @@ iperf_defaults(struct iperf_test *testp)
 
     testp->zerocopy = 0;
     testp->settings->send_recvmmsg = 0;
+    testp->settings->send_recvmsg = 0;
     memset(testp->cookie, 0, COOKIE_SIZE);
 
     testp->multisend = 10;	/* arbitrary */
@@ -3111,6 +3121,7 @@ iperf_reset_test(struct iperf_test *test)
     test->settings->dont_fragment = 0;
     test->zerocopy = 0;
     test->settings->send_recvmmsg = 0;
+    test->settings->send_recvmsg = 0;
 
 #if defined(HAVE_SSL)
     if (test->settings->authtoken) {
@@ -4874,3 +4885,28 @@ iperf_init_send_recvmmsg(struct iperf_test *test)
 #endif /* HAVE_SENDMMSG */
     return;
 }
+
+/*
+ * Initialize whether sed/recvmsg is supported for the test,
+ * along with initializing other related settings.
+ */
+void
+iperf_init_send_recvmsg(struct iperf_test *test)
+{
+#ifdef HAVE_SENDMMSG
+    /* Set UDP `send_recvmsg` from `zerocopy` settings (not used for disk file) */
+    if (test->protocol->id == Pudp && test->zerocopy_msg && test->diskfile_name == (char *)0) {
+        test->settings->send_recvmsg = 1;
+        /* Ensure non-zero burst number of packets when sendmmsg/recvmmsg are used */ 
+	if (test->settings->burst == 0)
+	    test->settings->burst = 1;
+#ifdef UIO_MAXIOV
+	/* Ensure burst size is appropriate for sendmmsg() */
+	else if (test->settings->burst > UIO_MAXIOV)
+	    test->settings->burst = UIO_MAXIOV;
+#endif /* UIO_MAXIOV */
+    }
+#endif /* HAVE_SENDMMSG */
+    return;
+}
+

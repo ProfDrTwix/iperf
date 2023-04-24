@@ -258,6 +258,44 @@ static int
 
             test->fd4 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
             ioctl(test->fd4, PERF_EVENT_IOC_ID, &test->id4);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_SOFTWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_SW_CPU_MIGRATIONS;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            test->pea.exclude_hv = 1;
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd5 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+            ioctl(test->fd5, PERF_EVENT_IOC_ID, &test->id5);
+
+            memset(&test->pea, 0, sizeof(struct perf_event_attr));
+            test->pea.type = PERF_TYPE_HARDWARE;
+            test->pea.size = sizeof(struct perf_event_attr);
+            test->pea.config = PERF_COUNT_HW_REF_CPU_CYCLES;
+            test->pea.disabled = 1;
+            if(test->kernelspace)
+                test->pea.exclude_kernel = 0;
+            else
+                test->pea.exclude_kernel = 1;
+            if(test->userspace)
+                test->pea.exclude_user = 0;
+            else
+                test->pea.exclude_user = 1;
+            test->pea.exclude_hv = 1;
+            test->pea.read_format = PERF_FORMAT_GROUP | PERF_FORMAT_ID;
+
+            test->fd6 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
+            ioctl(test->fd6, PERF_EVENT_IOC_ID, &test->id6);
         }
 
 

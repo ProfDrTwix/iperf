@@ -105,7 +105,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     int i;
     char *pbuf;
 
-    long long val1, val2, val3, val4;
+    long long val1, val2, val3, val4, val5, val6;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -114,7 +114,7 @@ iperf_udp_recv(struct iperf_stream *sp)
 
     struct timespec tmo;
 
-    if (sp->settings->send_recvmmsg == 1) { // Use recvmmsg()
+    if (sp->settings->send_recvmmsg == 1 || sp->settings->send_recvmsg) { // Use recvmmsg()
         // Set read timeout
         tmo.tv_sec = sp->settings->rcv_timeout.secs;
         tmo.tv_nsec = sp->settings->rcv_timeout.usecs;
@@ -125,9 +125,19 @@ iperf_udp_recv(struct iperf_stream *sp)
     do {
         if(sp->test->kernelspace || sp->test->userspace)
         {
-            ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
-            ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            if (sp->test->settings->send_recvmsg == 1)
+            {
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+                msgs_recvd = recvmsg(sp->socket, sp->msg, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITALL));
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            }
+
+            if (sp->test->settings->send_recvmmsg == 1)
+            {
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+                msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
+                ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+            }
         }
         else
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
@@ -145,10 +155,14 @@ iperf_udp_recv(struct iperf_stream *sp)
                 val3 = rf->values[f].value;
               } else if (rf->values[f].id == sp->test->id4) {
                 val4 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id4) {
+                val5 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id4) {
+                val6 = rf->values[f].value;
               } 
             }
 
-            fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS);
+            fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6);
         }
         
         if (msgs_recvd <= 0) {
@@ -318,7 +332,7 @@ iperf_udp_send(struct iperf_stream *sp)
     char *buf = sp->buffer;
     uint32_t  sec, usec;
 
-    long long val1, val2, val3, val4;
+    long long val1, val2, val3, val4, val5, val6;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -329,7 +343,7 @@ iperf_udp_send(struct iperf_stream *sp)
 
 #ifdef HAVE_SENDMMSG
     /* if sendmmsg is used - set buffer pointer to next buffer */
-    if (sp->settings->send_recvmmsg == 1) {
+    if (sp->settings->send_recvmmsg == 1 || sp->settings->send_recvmsg) {
         i = sp->sendmmsg_buffered_packets_count++;
         sp->msg[i].msg_hdr.msg_iovlen = 1;
         buf = sp->pbuf;
@@ -353,7 +367,7 @@ iperf_udp_send(struct iperf_stream *sp)
 
 /* Use sendmmsg when approriate to send the packet, else use Nwrite */
 #ifdef HAVE_SENDMMSG
-    if (sp->settings->send_recvmmsg == 1) {
+    if (sp->settings->send_recvmmsg == 1 || sp->settings->send_recvmsg == 1) {
         /* When enough "burst" packets were buffered - send them */
         if (sp->sendmmsg_buffered_packets_count >= sp->settings->burst) {
             /* Set actual sending time to all packets*/
@@ -377,9 +391,19 @@ iperf_udp_send(struct iperf_stream *sp)
 
                 if(sp->test->kernelspace || sp->test->userspace)
                 {
-                    ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
-                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
-                    ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+                    if(sp->test->settings->send_recvmsg)
+                    {
+                        ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+                        j = sendmsg(sp->socket, &sp->msg[i], (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                        ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+                    }
+
+                    if(sp->test->settings->send_recvmmsg)
+                    {
+                        ioctl(sp->test->fd1, PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
+                        j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                        ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
+                    }
                 }
                 else
                 {
@@ -414,10 +438,14 @@ iperf_udp_send(struct iperf_stream *sp)
                     val3 = rf->values[f].value;
                   } else if (rf->values[f].id == sp->test->id4) {
                     val4 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id4) {
+                    val5 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id4) {
+                    val6 = rf->values[f].value;
                   } 
                 }
 
-                fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS);
+                fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6);
             }
 
             if (sp->test->debug)
