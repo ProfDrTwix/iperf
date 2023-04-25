@@ -409,20 +409,34 @@ iperf_udp_send(struct iperf_stream *sp)
                 {
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
                 }
-                    
-                if (j < 0) {
-                    r = j;
-                    break;
+                
+                if(sp->settings->send_recvmmsg == 1)
+                {
+                    if (j < 0) {
+                        r = j;
+                        break;
+                    }
+
+                    if (sp->test->debug && i+j < sp->sendmmsg_buffered_packets_count)
+                        printf("sendmmsg() sent only %d messges out of %d still bufferred\n",
+                               j, sp->sendmmsg_buffered_packets_count-i);
+
+                    for (k = i; k < i+j; k++) { /* accumulate number of bytes sent */
+                        r += sp->msg[k].msg_len;
+                    }
+                    i += j; /* accumulate number of messages received */
                 }
 
-                if (sp->test->debug && i+j < sp->sendmmsg_buffered_packets_count)
-                    printf("sendmmsg() sent only %d messges out of %d still bufferred\n",
-                           j, sp->sendmmsg_buffered_packets_count-i);
+                if(sp->settings->send_recvmsg == 1)
+                {
+                    if (j < 0) {
+                        r = j;
+                        break;
+                    }
 
-                for (k = i; k < i+j; k++) { /* accumulate number of bytes sent */
-                    r += sp->msg[k].msg_len;
+                    r += j;
+                    i++;
                 }
-                i += j; /* accumulate number of messages received */
             }
 
 
