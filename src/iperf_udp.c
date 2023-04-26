@@ -142,6 +142,23 @@ iperf_udp_recv(struct iperf_stream *sp)
         else
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
+               
+        if(sp->settings->send_recvmmsg)
+        {
+            if (msgs_recvd <= 0) {
+                r = msgs_recvd;
+            } else {
+                for (i = 0, r = 0; i < msgs_recvd; i++) {
+                    r += sp->msg[i].msg_hdr.msg_iov->iov_len;
+                }
+            } 
+        }
+
+        if(sp->settings->send_recvmsg)
+        {
+            r = msgs_recvd;
+            msgs_recvd = msgs_recvd / sp->msg[0].msg_hdr.msg_iov->iov_len;
+        }
 
         if(sp->test->kernelspace || sp->test->userspace)
         {
@@ -164,14 +181,7 @@ iperf_udp_recv(struct iperf_stream *sp)
 
             fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6);
         }
-        
-        if (msgs_recvd <= 0) {
-            r = msgs_recvd;
-        } else {
-            for (i = 0, r = 0; i < msgs_recvd; i++) {
-                r += sp->msg[i].msg_hdr.msg_iov->iov_len;
-            }
-        } 
+
     } // recvmmsg
     else
 #endif // HAVE_SEND_RECVMMSG
@@ -180,8 +190,6 @@ iperf_udp_recv(struct iperf_stream *sp)
         msgs_recvd = 1;
         // `sp->msg[0].msg_hdr.msg_iov->iov_base = sp->buffer;` - not needed as initialized as part of Stream init
     }
-
-    r = Nread(sp->socket, sp->buffer, size, Pudp);
 
     /*
      * If we got an error in the read, or if we didn't read anything
