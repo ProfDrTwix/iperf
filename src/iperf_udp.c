@@ -143,7 +143,7 @@ iperf_udp_recv(struct iperf_stream *sp)
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
                
-        if(sp->settings->send_recvmmsg)
+        if(sp->settings->send_recvmmsg == 1)
         {
             if (msgs_recvd <= 0) {
                 r = msgs_recvd;
@@ -154,7 +154,7 @@ iperf_udp_recv(struct iperf_stream *sp)
             } 
         }
 
-        if(sp->settings->send_recvmsg)
+        if(sp->settings->send_recvmsg == 1)
         {
             r = msgs_recvd;
             msgs_recvd = msgs_recvd / sp->msg[0].msg_hdr.msg_iov->iov_len;
