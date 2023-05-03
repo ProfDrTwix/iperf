@@ -1762,7 +1762,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_Cycles;\n");
+    fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
 
     return 0;
 }

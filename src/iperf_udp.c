@@ -105,7 +105,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     int i;
     char *pbuf;
 
-    long long val1, val2, val3, val4, val5, val6;
+    long long val1, val2, val3, val4, val5, val6, val7;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -172,14 +172,16 @@ iperf_udp_recv(struct iperf_stream *sp)
                 val3 = rf->values[f].value;
               } else if (rf->values[f].id == sp->test->id4) {
                 val4 = rf->values[f].value;
-              } else if (rf->values[f].id == sp->test->id4) {
+              } else if (rf->values[f].id == sp->test->id5) {
                 val5 = rf->values[f].value;
-              } else if (rf->values[f].id == sp->test->id4) {
+              } else if (rf->values[f].id == sp->test->id6) {
                 val6 = rf->values[f].value;
+              } else if (rf->values[f].id == sp->test->id7) {
+                val7 = rf->values[f].value;
               } 
             }
 
-            fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6);
+            fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
         }
 
     } // recvmmsg
@@ -340,7 +342,7 @@ iperf_udp_send(struct iperf_stream *sp)
     char *buf = sp->buffer;
     uint32_t  sec, usec;
 
-    long long val1, val2, val3, val4, val5, val6;
+    long long val1, val2, val3, val4, val5, val6, val7;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
@@ -460,14 +462,16 @@ iperf_udp_send(struct iperf_stream *sp)
                     val3 = rf->values[f].value;
                   } else if (rf->values[f].id == sp->test->id4) {
                     val4 = rf->values[f].value;
-                  } else if (rf->values[f].id == sp->test->id4) {
+                  } else if (rf->values[f].id == sp->test->id5) {
                     val5 = rf->values[f].value;
-                  } else if (rf->values[f].id == sp->test->id4) {
+                  } else if (rf->values[f].id == sp->test->id6) {
                     val6 = rf->values[f].value;
+                  } else if (rf->values[f].id == sp->test->id7) {
+                    val7 = rf->values[f].value;
                   } 
                 }
 
-                fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6);
+                fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
             }
 
             if (sp->test->debug)

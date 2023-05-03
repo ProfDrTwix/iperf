@@ -431,8 +431,8 @@ struct iperf_test
     //Performance Counter perf_event_open
     int userspace, kernelspace;
     struct perf_event_attr pea;
-    int fd1, fd2, fd3, fd4, fd5, fd6;
-    uint64_t id1, id2, id3, id4, id5, id6;
+    int fd1, fd2, fd3, fd4, fd5, fd6, fd7;
+    uint64_t id1, id2, id3, id4, id5, id6, id7;
     int MSG_OPTIONS;
 };
 
