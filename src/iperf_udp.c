@@ -49,7 +49,6 @@
 #include <linux/perf_event.h>
 #include <sys/ioctl.h>
 #include <inttypes.h>
-#include <stdio.h>
 #include <linux/hw_breakpoint.h>
 #include <sys/syscall.h>
 #include <errno.h>
@@ -59,6 +58,7 @@
 #include "iperf_util.h"
 #include "iperf_udp.h"
 #include "timer.h"
+#include "time.h"
 #include "net.h"
 #include "cjson.h"
 #include "portable_endian.h"
@@ -108,6 +108,8 @@ iperf_udp_recv(struct iperf_stream *sp)
     long long val1, val2, val3, val4, val5, val6, val7;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
+    struct timespec t_start, t_end;
+    double timestamp_start, timestamp_end;
 
     // Select message reading method
 #ifdef HAVE_SEND_RECVMMSG
@@ -123,7 +125,7 @@ iperf_udp_recv(struct iperf_stream *sp)
             ioctl(sp->test->fd1, PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
         // Receive at least one message
     do {
-        if(sp->test->kernelspace || sp->test->userspace)
+        if((sp->test->kernelspace || sp->test->userspace) & !sp->test->timemeasurement)
         {
             if (sp->test->settings->send_recvmsg == 1)
             {
@@ -138,6 +140,12 @@ iperf_udp_recv(struct iperf_stream *sp)
                 msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
                 ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
             }
+        }
+        else if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+        {
+            clock_gettime(CLOCK_REALTIME, &t_start);
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
+            clock_gettime(CLOCK_REALTIME, &t_end);
         }
         else
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
@@ -160,7 +168,7 @@ iperf_udp_recv(struct iperf_stream *sp)
             msgs_recvd = msgs_recvd / sp->msg[0].msg_hdr.msg_iov->iov_len;
         }
 
-        if(sp->test->kernelspace || sp->test->userspace)
+        if((sp->test->kernelspace || sp->test->userspace) & !sp->test->timemeasurement)
         {
             read(sp->test->fd1, buf_instr, sizeof(buf_instr));
             for (int f = 0; f < rf->nr; f++) {
@@ -183,6 +191,13 @@ iperf_udp_recv(struct iperf_stream *sp)
 
             fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
         }
+        else if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+            {
+                timestamp_start = (double)(t_start.tv_sec * 1000000000L) + (double)t_start.tv_nsec;
+                timestamp_end = (double)(t_end.tv_sec * 1000000000L) + (double)t_end.tv_nsec;
+
+                fprintf(sp->test->instr_outfile, "%lf;%lf;%lf;\r\n",timestamp_start, timestamp_end, timestamp_end - timestamp_start);
+            }
 
     } // recvmmsg
     else
@@ -346,6 +361,9 @@ iperf_udp_send(struct iperf_stream *sp)
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
+    struct timespec t_start, t_end;
+    double timestamp_start, timestamp_end;
+
 #ifdef HAVE_SENDMMSG
     int i, j, k;
     char *b;
@@ -399,7 +417,7 @@ iperf_udp_send(struct iperf_stream *sp)
 
             while (i < sp->sendmmsg_buffered_packets_count) {
 
-                if(sp->test->kernelspace || sp->test->userspace)
+                if((sp->test->kernelspace || sp->test->userspace) & !sp->test->timemeasurement)
                 {
                     if(sp->test->settings->send_recvmsg)
                     {
@@ -414,6 +432,12 @@ iperf_udp_send(struct iperf_stream *sp)
                         j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
                         ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
                     }
+                }
+                else if(sp->test->timemeasurement & !(sp->test->kernelspace || sp->test->userspace))
+                {
+                    clock_gettime(CLOCK_REALTIME, &t_start);
+                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                    clock_gettime(CLOCK_REALTIME, &t_end);
                 }
                 else
                 {
@@ -450,7 +474,7 @@ iperf_udp_send(struct iperf_stream *sp)
             }
 
 
-            if(sp->test->kernelspace || sp->test->userspace)
+            if((sp->test->kernelspace || sp->test->userspace) & !sp->test->timemeasurement)
             {
                 read(sp->test->fd1, buf_instr, sizeof(buf_instr));
                 for (int f = 0; f < rf->nr; f++) {
@@ -472,6 +496,13 @@ iperf_udp_send(struct iperf_stream *sp)
                 }
 
                 fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
+            }
+            else if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+            {
+                timestamp_start = (double)(t_start.tv_sec * 1000000000L) + (double)t_start.tv_nsec;
+                timestamp_end = (double)(t_end.tv_sec * 1000000000L) + (double)t_end.tv_nsec;
+
+                fprintf(sp->test->instr_outfile, "%lf;%lf;%lf;\r\n",timestamp_start, timestamp_end, timestamp_end - timestamp_start);
             }
 
             if (sp->test->debug)

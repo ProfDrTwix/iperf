@@ -1063,7 +1063,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
     char *client_username = NULL, *client_rsa_public_key = NULL, *server_rsa_private_key = NULL;
 #endif /* HAVE_SSL */
 
-    while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZzO:F:A:T:C:dI:hX:", longopts, NULL)) != -1) {
+    while ((flag = getopt_long(argc, argv, "EUp:f:i:D1VJvsc:ub:t:n:k:l:P:Rw:B:M:N46S:L:ZzO:F:A:T:C:dI:hX:y", longopts, NULL)) != -1) {
         switch (flag) {
             case OPT_MSG_CTRUNC:
                 test->MSG_OPTIONS |= OPT_MSG_CTRUNC;
@@ -1115,6 +1115,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
                 break;
             case OPT_MSG_CMSG_CLOEXEC:
                 test->MSG_OPTIONS |= OPT_MSG_CMSG_CLOEXEC;
+                break;
+            case 'y':
+                test->timemeasurement = 1;
                 break;
             case 'E':
                 test->kernelspace = 1;
@@ -1762,7 +1765,10 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         return -1;
     }
 
-    fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
+    if((test->kernelspace || test->userspace) & !test->timemeasurement)
+        fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
+    if(!(test->kernelspace || test->userspace) & test->timemeasurement)
+        fprintf(test->instr_outfile, "Timestamp Start; Timestamp End; Excuted Time;\n");
 
     return 0;
 }

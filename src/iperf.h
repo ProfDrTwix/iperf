@@ -428,6 +428,9 @@ struct iperf_test
     TAILQ_HEAD(iperf_textlisthead, iperf_textline) server_output_list;
 
 
+    //Timemeasurement recvmmsg, sendmmsg
+    int timemeasurement;
+
     //Performance Counter perf_event_open
     int userspace, kernelspace;
     struct perf_event_attr pea;
