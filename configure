@@ -14616,6 +14616,20 @@ fi
 
 done
 
+# Check for perf support (only linux).
+       for ac_header in linux/perf_event.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "linux/perf_event.h" "ac_cv_header_linux_perf_event_h" "$ac_includes_default"
+if test "x$ac_cv_header_linux_perf_event_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_LINUX_PERF_EVENT_H 1" >>confdefs.h
+
+printf "%s\n" "#define QNX_NOT_SUPPORTED 1" >>confdefs.h
+
+fi
+
+done
+
 # Check for packet pacing socket option (Linux only for now).
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking SO_MAX_PACING_RATE socket option" >&5
 printf %s "checking SO_MAX_PACING_RATE socket option... " >&6; }

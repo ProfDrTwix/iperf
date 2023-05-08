@@ -944,24 +944,26 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 {
     static struct option longopts[] =
     {
+#ifdef QNX_NOT_SUPPORTED
         {"MSG_BATCH", no_argument, NULL, OPT_MSG_BATCH},
         {"MSG_CMSG_CLOEXEC", no_argument, NULL, OPT_MSG_CMSG_CLOEXEC},
         {"MSG_CONFIRM", no_argument, NULL, OPT_MSG_CONFIRM},
-        {"MSG_CTRUNC", no_argument, NULL, OPT_MSG_CTRUNC},
-        {"MSG_DONTWAIT", no_argument, NULL, OPT_MSG_DONTWAIT},
-        {"MSG_EOR", no_argument, NULL, OPT_MSG_EOR},
         {"MSG_ERRQUEUE", no_argument, NULL, OPT_MSG_ERRQUEUE},
         {"MSG_FASTOPEN", no_argument, NULL, OPT_MSG_FIN},
         {"MSG_FIN", no_argument, NULL, OPT_MSG_MORE},
-        {"MSG_NOSIGNAL", no_argument, NULL, OPT_MSG_NOSIGNAL},
         {"MSG_RST", no_argument, NULL, OPT_MSG_RST},
         {"MSG_SYN", no_argument, NULL, OPT_MSG_SYN},
+        {"MSG_ZEROCOPY", no_argument, NULL, OPT_MSG_ZEROCOPY},
+        {"zerocopy_msg", no_argument, NULL, 'z'},
+#endif
+        {"MSG_CTRUNC", no_argument, NULL, OPT_MSG_CTRUNC},
+        {"MSG_DONTWAIT", no_argument, NULL, OPT_MSG_DONTWAIT},
+        {"MSG_EOR", no_argument, NULL, OPT_MSG_EOR},
+        {"MSG_NOSIGNAL", no_argument, NULL, OPT_MSG_NOSIGNAL},
         {"MSG_TRUNC", no_argument, NULL, OPT_MSG_TRUNC},
         {"MSG_TRYHARD", no_argument, NULL, OPT_MSG_TRYHARD},
         {"MSG_WAITALL", no_argument, NULL, OPT_MSG_WAITALL},
         {"MSG_WAITFORONE", no_argument, NULL, OPT_MSG_WAITFORONE},
-        {"MSG_ZEROCOPY", no_argument, NULL, OPT_MSG_ZEROCOPY},
-        {"zerocopy_msg", no_argument, NULL, 'z'},
         {"benchmark-kernel", no_argument, NULL, 'E'},
         {"benchmark-userspace", no_argument, NULL, 'U'},
         {"port", required_argument, NULL, 'p'},
@@ -1068,9 +1070,9 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case OPT_MSG_CTRUNC:
                 test->MSG_OPTIONS |= OPT_MSG_CTRUNC;
                 break;
-            case OPT_MSG_TRUNC:	
-                test->MSG_OPTIONS |= OPT_MSG_TRUNC;
-                break;
+           // case OPT_MSG_TRUNC:	
+           //     test->MSG_OPTIONS |= OPT_MSG_TRUNC;
+           //     break;
             case OPT_MSG_DONTWAIT:	
                 test->MSG_OPTIONS |= OPT_MSG_DONTWAIT;
                 break;
@@ -1080,6 +1082,13 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case OPT_MSG_WAITALL:
                 test->MSG_OPTIONS |= OPT_MSG_WAITALL;
                 break;
+            case OPT_MSG_WAITFORONE:
+                test->MSG_OPTIONS |= OPT_MSG_WAITFORONE;
+                break;
+            case OPT_MSG_NOSIGNAL:
+                test->MSG_OPTIONS |= OPT_MSG_NOSIGNAL;
+                break;
+#ifdef QNX_NOT_SUPPORTED
             case OPT_MSG_FIN:	
                 test->MSG_OPTIONS |= OPT_MSG_FIN;
                 break;
@@ -1095,14 +1104,8 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case OPT_MSG_ERRQUEUE:
                 test->MSG_OPTIONS |= OPT_MSG_ERRQUEUE;
                 break;
-            case OPT_MSG_NOSIGNAL:
-                test->MSG_OPTIONS |= OPT_MSG_NOSIGNAL;
-                break;
             case OPT_MSG_MORE:
                 test->MSG_OPTIONS |= OPT_MSG_MORE;
-                break;
-            case OPT_MSG_WAITFORONE:
-                test->MSG_OPTIONS |= OPT_MSG_WAITFORONE;
                 break;
             case OPT_MSG_BATCH:
                 test->MSG_OPTIONS |= OPT_MSG_BATCH;
@@ -1116,9 +1119,6 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case OPT_MSG_CMSG_CLOEXEC:
                 test->MSG_OPTIONS |= OPT_MSG_CMSG_CLOEXEC;
                 break;
-            case 'y':
-                test->timemeasurement = 1;
-                break;
             case 'E':
                 test->kernelspace = 1;
                 break;
@@ -1128,6 +1128,10 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case 'z':
                 test->zerocopy_msg = 1;
                 test->zerocopy = 0;
+                break;
+#endif
+            case 'y':
+                test->timemeasurement = 1;
                 break;
             case 'p':
 		portno = atoi(optarg);
@@ -1395,7 +1399,7 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
 		TAILQ_INSERT_TAIL(&test->xbind_addrs, xbe, link);
                 break;
             case 'Z':
-                if (!has_sendfile()) {
+                if (!has_sendfile() && !test->protocol->id == Pudp) {
                     i_errno = IENOSENDFILE;
                     return -1;
                 }
@@ -1768,8 +1772,8 @@ int iperf_open_instr_logfile(struct iperf_test *test)
     if((test->kernelspace || test->userspace) & !test->timemeasurement)
         fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
 #endif  /*QNX_NOT_SUPPORTED*/
-    if(!(test->kernelspace || test->userspace) & test->timemeasurement)
-        fprintf(test->instr_outfile, "Timestamp Start; Timestamp End; Excuted Time;\n");
+    if(test->timemeasurement)
+        fprintf(test->instr_outfile, "Resolution Sec; Resolution nSec; Time Start Sec; Time Start nSec; Time End Sec; Time End nSec; Time Diff Sec; Time Diff nSec\n");
 
     return 0;
 }
@@ -2721,7 +2725,9 @@ iperf_new_test()
     /* initialize everything to zero */
     memset(test, 0, sizeof(struct iperf_test));
 
+#ifdef QNX_NOT_SUPPORTED
     memset(&test->pea, 0, sizeof(struct perf_event_attr));
+#endif
 
     test->settings = (struct iperf_settings *) malloc(sizeof(struct iperf_settings));
     if (!test->settings) {
@@ -2900,6 +2906,7 @@ iperf_free_test(struct iperf_test *test)
     struct protocol *prot;
     struct iperf_stream *sp;
 
+#ifdef QNX_NOT_SUPPORTED
     if(test->fd1)
     close(test->fd1);
     if(test->fd2)
@@ -2908,6 +2915,7 @@ iperf_free_test(struct iperf_test *test)
     close(test->fd3);
     if(test->fd4)
     close(test->fd4);
+#endif 
 
     /* Free streams */
     while (!SLIST_EMPTY(&test->streams)) {

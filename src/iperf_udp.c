@@ -49,12 +49,12 @@
 #ifdef QNX_NOT_SUPPORTED
 #include <linux/perf_event.h>
 #include <linux/hw_breakpoint.h>
-#endif  /*QNX_NOT_SUPPORTED*/
 #include <sys/ioctl.h>
 #include <inttypes.h>
-
 #include <sys/syscall.h>
 #include <errno.h>
+#endif  /*QNX_NOT_SUPPORTED*/
+
 #include "iperf.h"
 #include "iperf_api.h"
 #include "iperf_util.h"
@@ -110,8 +110,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     long long val1, val2, val3, val4, val5, val6, val7;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
-    struct timespec t_start, t_end;
-    double timestamp_start, timestamp_end;
+    struct timespec t_start, t_end, res;
 
     // Select message reading method
 #ifdef HAVE_SEND_RECVMMSG
@@ -148,11 +147,11 @@ iperf_udp_recv(struct iperf_stream *sp)
             }
         }
 #endif  /*QNX_NOT_SUPPORTED*/
-        if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+        if(sp->test->timemeasurement)
         {
-            clock_gettime(CLOCK_REALTIME, &t_start);
+            clock_gettime(CLOCK_REALTIME , &t_start);
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
-            clock_gettime(CLOCK_REALTIME, &t_end);
+            clock_gettime(CLOCK_REALTIME , &t_end);
         }
         else
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
@@ -200,12 +199,10 @@ iperf_udp_recv(struct iperf_stream *sp)
             fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
         }
 #endif  /*QNX_NOT_SUPPORTED*/
-        if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+        if(sp->test->timemeasurement)
             {
-                timestamp_start = (double)(t_start.tv_sec * 1000000000L) + (double)t_start.tv_nsec;
-                timestamp_end = (double)(t_end.tv_sec * 1000000000L) + (double)t_end.tv_nsec;
-
-                fprintf(sp->test->instr_outfile, "%lf;%lf;%lf;\r\n",timestamp_start, timestamp_end, timestamp_end - timestamp_start);
+                clock_getres(CLOCK_REALTIME, &res);
+                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n", res.tv_sec,res.tv_nsec,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
             }
 
     } // recvmmsg
@@ -370,8 +367,7 @@ iperf_udp_send(struct iperf_stream *sp)
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
-    struct timespec t_start, t_end;
-    double timestamp_start, timestamp_end;
+    struct timespec t_start, t_end, res;
 
 #ifdef HAVE_SENDMMSG
     int i, j, k;
@@ -445,11 +441,11 @@ iperf_udp_send(struct iperf_stream *sp)
                     }
                 }
 #endif  /*QNX_NOT_SUPPORTED*/
-                if(sp->test->timemeasurement & !(sp->test->kernelspace || sp->test->userspace))
+                if(sp->test->timemeasurement)
                 {
-                    clock_gettime(CLOCK_REALTIME, &t_start);
+                    clock_gettime(CLOCK_REALTIME , &t_start);
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
-                    clock_gettime(CLOCK_REALTIME, &t_end);
+                    clock_gettime(CLOCK_REALTIME , &t_end);
                 }
                 else
                 {
@@ -509,12 +505,10 @@ iperf_udp_send(struct iperf_stream *sp)
                 fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
             }
 #endif  /*QNX_NOT_SUPPORTED*/
-            if(!(sp->test->kernelspace || sp->test->userspace) & sp->test->timemeasurement)
+            if(sp->test->timemeasurement)
             {
-                timestamp_start = (double)(t_start.tv_sec * 1000000000L) + (double)t_start.tv_nsec;
-                timestamp_end = (double)(t_end.tv_sec * 1000000000L) + (double)t_end.tv_nsec;
-
-                fprintf(sp->test->instr_outfile, "%lf;%lf;%lf;\r\n",timestamp_start, timestamp_end, timestamp_end - timestamp_start);
+                clock_getres(CLOCK_REALTIME, &res);
+                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n",res.tv_sec, res.tv_nsec ,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
             }
 
             if (sp->test->debug)

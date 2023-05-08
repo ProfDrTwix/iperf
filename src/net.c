@@ -153,11 +153,12 @@ netdial(int domain, int proto, const char *local, const char *bind_dev, int loca
     zero_copy = 1;
     optval = 1;
 
-
+#ifdef QNX_NOT_SUPPORTED
     if(zero_copy)
     {
         setsockopt(s, SOL_SOCKET, SO_ZEROCOPY, &optval, sizeof(optval));
     }
+#endif
 
     if (bind_dev) {
 #if defined(HAVE_SO_BINDTODEVICE)

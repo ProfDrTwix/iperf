@@ -39,6 +39,9 @@
 /* Have IP_MTU_DISCOVER sockopt. */
 #undef HAVE_IP_MTU_DISCOVER
 
+/* Define to 1 if you have the <linux/perf_event.h> header file. */
+#undef HAVE_LINUX_PERF_EVENT_H
+
 /* Define to 1 if you have the <linux/tcp.h> header file. */
 #undef HAVE_LINUX_TCP_H
 
@@ -140,6 +143,9 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* Have perf event open functions (only Linux) */
+#undef QNX_NOT_SUPPORTED
 
 /* Define to 1 if all of the C90 standard headers exist (not just the ones
    required in a freestanding environment). This macro is provided for

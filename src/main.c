@@ -176,7 +176,7 @@ static int
 	    iperf_delete_pidfile(test);
             break;
 	case 'c':
-
+#ifdef QNX_NOT_SUPPORTED
         if(test->kernelspace || test->userspace)
         {
             if (test->debug)
@@ -316,8 +316,7 @@ static int
             test->fd7 = syscall(__NR_perf_event_open, &test->pea, 0, -1, test->fd1, 0);
             ioctl(test->fd7, PERF_EVENT_IOC_ID, &test->id7);
         }
-
-
+#endif  /*QNX_NOT_SUPPORTED*/
 	    if (iperf_create_pidfile(test) < 0) {
 		i_errno = IEPIDFILE;
 		iperf_errexit(test, "error - %s", iperf_strerror(i_errno));
