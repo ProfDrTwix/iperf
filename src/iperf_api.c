@@ -1764,9 +1764,10 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         i_errno = IELOGFILE;
         return -1;
     }
-
+#ifdef QNX_NOT_SUPPORTED
     if((test->kernelspace || test->userspace) & !test->timemeasurement)
         fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
+#endif  /*QNX_NOT_SUPPORTED*/
     if(!(test->kernelspace || test->userspace) & test->timemeasurement)
         fprintf(test->instr_outfile, "Timestamp Start; Timestamp End; Excuted Time;\n");
 
