@@ -54,6 +54,9 @@
 #include <sys/syscall.h>
 #include <errno.h>
 #endif  /*QNX_NOT_SUPPORTED*/
+#ifdef LINUX_NOT_SUPPORTED
+#include <sys/neutrino.h>
+#endif
 
 #include "iperf.h"
 #include "iperf_api.h"
@@ -111,6 +114,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
     struct timespec t_start, t_end, res;
+    uint64_t start_cycle, end_cycle;
 
     // Select message reading method
 #ifdef HAVE_SEND_RECVMMSG
@@ -146,7 +150,7 @@ iperf_udp_recv(struct iperf_stream *sp)
                 ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
             }
         }
-#endif  /*QNX_NOT_SUPPORTED*/
+
         if(sp->test->timemeasurement)
         {
             clock_gettime(CLOCK_REALTIME , &t_start);
@@ -154,7 +158,20 @@ iperf_udp_recv(struct iperf_stream *sp)
             clock_gettime(CLOCK_REALTIME , &t_end);
         }
         else
+#endif  /*QNX_NOT_SUPPORTED*/
+#ifdef LINUX_NOT_SUPPORTED
+        if(sp->test->timemeasurement)
+        {
+            start_cycle = ClockCycles();
+            msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
+            end_cycle = ClockCycles();
+        }
+        else
+#endif
+        {
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, MSG_WAITFORONE, &tmo);
+        }
+
         } while (msgs_recvd < 0 && (errno == EAGAIN || errno == EWOULDBLOCK));
 
 #ifdef QNX_NOT_SUPPORTED
@@ -198,12 +215,20 @@ iperf_udp_recv(struct iperf_stream *sp)
 
             fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", msgs_recvd, size, val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
         }
-#endif  /*QNX_NOT_SUPPORTED*/
+
         if(sp->test->timemeasurement)
             {
                 clock_getres(CLOCK_REALTIME, &res);
                 fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n", res.tv_sec,res.tv_nsec,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
             }
+#endif  /*QNX_NOT_SUPPORTED*/
+#ifdef LINUX_NOT_SUPPORTED
+        if(sp->test->timemeasurement)
+            {
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;\r\n", start_cycle,end_cycle,end_cycle - start_cycle);
+            }
+#endif
+
 
     } // recvmmsg
     else
@@ -369,6 +394,8 @@ iperf_udp_send(struct iperf_stream *sp)
 
     struct timespec t_start, t_end, res;
 
+    u_int64_t start_cycles, end_cycle;
+
 #ifdef HAVE_SENDMMSG
     int i, j, k;
     char *b;
@@ -440,13 +467,21 @@ iperf_udp_send(struct iperf_stream *sp)
                         ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
                     }
                 }
-#endif  /*QNX_NOT_SUPPORTED*/
                 if(sp->test->timemeasurement)
                 {
                     clock_gettime(CLOCK_REALTIME , &t_start);
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
                     clock_gettime(CLOCK_REALTIME , &t_end);
                 }
+#endif  /*QNX_NOT_SUPPORTED*/
+#ifdef LINUX_NOT_SUPPORTED
+                if(sp->test->timemeasurement)
+                {
+                    start_cycle = ClockCycles();
+                    j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                    end_cycles = ClockCycles();
+                }
+#endif
                 else
                 {
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, MSG_DONTWAIT);
@@ -504,12 +539,19 @@ iperf_udp_send(struct iperf_stream *sp)
 
                 fprintf(sp->test->instr_outfile, "%d;%d;%lld;%lld;%lld;%lld;%d;;%lld;%lld;%lld;\r\n", j, size ,val1,val2,val3,val4,sp->test->MSG_OPTIONS,val5,val6,val7);
             }
-#endif  /*QNX_NOT_SUPPORTED*/
             if(sp->test->timemeasurement)
             {
                 clock_getres(CLOCK_REALTIME, &res);
                 fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n",res.tv_sec, res.tv_nsec ,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
             }
+#endif  /*QNX_NOT_SUPPORTED*/
+
+#ifdef LINUX_NOT_SUPPORTED
+        if(sp->test->timemeasurement)
+            {
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;\r\n", start_cycle,end_cycle,end_cycle - start_cycle);
+            }
+#endif
 
             if (sp->test->debug)
                 printf("sendmmsg() %s. Sent %d messges out of %d bufferred. %d bytes sent. (errno=%d: %s)\n",

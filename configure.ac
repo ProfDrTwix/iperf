@@ -214,6 +214,10 @@ AC_CHECK_FUNCS([sendmmsg recvmmsg],
 AC_CHECK_HEADERS([linux/perf_event.h],
          AC_DEFINE([QNX_NOT_SUPPORTED], [1], [Have perf event open functions (only Linux)]))
 
+# Check for ClockCycles() function:
+AC_CHECK_FUNCS([ClockCycles], 
+          AC_DEFINE([LINUX_NOT_SUPPORTED], [1], [Measure ClockCycles under QNX]))
+
 # Check for packet pacing socket option (Linux only for now).
 AC_CACHE_CHECK([SO_MAX_PACING_RATE socket option],
 [iperf3_cv_header_so_max_pacing_rate],
