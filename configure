@@ -14630,6 +14630,20 @@ fi
 
 done
 
+# Check for ClockCycles() function:
+       for ac_header in sys/neutrino.h
+do :
+  ac_fn_c_check_header_compile "$LINENO" "sys/neutrino.h" "ac_cv_header_sys_neutrino_h" "$ac_includes_default"
+if test "x$ac_cv_header_sys_neutrino_h" = xyes
+then :
+  printf "%s\n" "#define HAVE_SYS_NEUTRINO_H 1" >>confdefs.h
+
+printf "%s\n" "#define LINUX_NOT_SUPPORTED 1" >>confdefs.h
+
+fi
+
+done
+
 # Check for packet pacing socket option (Linux only for now).
 { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking SO_MAX_PACING_RATE socket option" >&5
 printf %s "checking SO_MAX_PACING_RATE socket option... " >&6; }

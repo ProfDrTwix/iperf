@@ -215,7 +215,7 @@ AC_CHECK_HEADERS([linux/perf_event.h],
          AC_DEFINE([QNX_NOT_SUPPORTED], [1], [Have perf event open functions (only Linux)]))
 
 # Check for ClockCycles() function:
-AC_CHECK_FUNCS([ClockCycles], 
+AC_CHECK_HEADERS([sys/neutrino.h], 
           AC_DEFINE([LINUX_NOT_SUPPORTED], [1], [Measure ClockCycles under QNX]))
 
 # Check for packet pacing socket option (Linux only for now).

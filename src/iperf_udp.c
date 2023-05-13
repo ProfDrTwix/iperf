@@ -394,7 +394,7 @@ iperf_udp_send(struct iperf_stream *sp)
 
     struct timespec t_start, t_end, res;
 
-    u_int64_t start_cycles, end_cycle;
+    uint64_t start_cycle, end_cycle;
 
 #ifdef HAVE_SENDMMSG
     int i, j, k;
@@ -479,7 +479,7 @@ iperf_udp_send(struct iperf_stream *sp)
                 {
                     start_cycle = ClockCycles();
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
-                    end_cycles = ClockCycles();
+                    end_cycle = ClockCycles();
                 }
 #endif
                 else
