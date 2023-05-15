@@ -1775,7 +1775,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
         fprintf(test->instr_outfile, "Resolution Sec; Resolution nSec; Time Start Sec; Time Start nSec; Time End Sec; Time End nSec; Time Diff Sec; Time Diff nSec;\n");
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
-        fprintf(test->instr_outfile, "Start Cycle; End Cycle; Diff\n");
+        fprintf(test->instr_outfile, "Start Cycle; End Cycle; Cycles per Second; Cycles in nsec;\n");
 #endif
 
     return 0;

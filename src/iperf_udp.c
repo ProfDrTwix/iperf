@@ -56,6 +56,7 @@
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
 #include <sys/neutrino.h>
+#include <sys/syspage.h>
 #endif
 
 #include "iperf.h"
@@ -113,7 +114,7 @@ iperf_udp_recv(struct iperf_stream *sp)
     long long val1, val2, val3, val4, val5, val6, val7;
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
-    struct timespec t_start, t_end, res;
+    struct timespec t_start, t_end, res, timediff;
     uint64_t start_cycle, end_cycle;
 
     // Select message reading method
@@ -218,14 +219,30 @@ iperf_udp_recv(struct iperf_stream *sp)
 
         if(sp->test->timemeasurement)
             {
-                clock_getres(CLOCK_REALTIME, &res);
-                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n", res.tv_sec,res.tv_nsec,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
+                timediff.tv_nsec = t_end.tv_nsec - t_start.tv_nsec;
+                timediff.tv_sec = t_end.tv_sec - t_start.tv_sec;
+
+                if(timediff.tv_sec > 0 && timediff.tv_nsec < 0)
+                {
+                    timediff.tv_nsec += 1000000000;
+                    timediff.tv_sec--;
+                }
+                else if(timediff.tv_sec < 0 && timediff.tv_nsec > 0)
+                {
+                    timediff.tv_nsec -= 1000000000;
+                    timediff.tv_sec++;
+                }
+
+                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n",res.tv_sec, res.tv_nsec ,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, timediff.tv_sec, timediff.tv_nsec);
             }
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
         if(sp->test->timemeasurement)
             {
-                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;\r\n", start_cycle,end_cycle,end_cycle - start_cycle);
+                uint64_t cps = SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+                uint64_t ncycles = end_cycle - start_cycle;
+                double sec = ((double) ncycles/cps) * 1000000000;
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%.0f;\r\n", start_cycle,end_cycle,cps,sec);
             }
 #endif
 
@@ -392,7 +409,7 @@ iperf_udp_send(struct iperf_stream *sp)
     char buf_instr[4096];
     struct read_format* rf = (struct read_format*) buf_instr;
 
-    struct timespec t_start, t_end, res;
+    struct timespec t_start, t_end, res, timediff;
 
     uint64_t start_cycle, end_cycle;
 
@@ -542,14 +559,32 @@ iperf_udp_send(struct iperf_stream *sp)
             if(sp->test->timemeasurement)
             {
                 clock_getres(CLOCK_REALTIME, &res);
-                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n",res.tv_sec, res.tv_nsec ,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, t_end.tv_sec - t_start.tv_sec, t_end.tv_nsec - t_start.tv_nsec);
+
+                timediff.tv_nsec = t_end.tv_nsec - t_start.tv_nsec;
+                timediff.tv_sec = t_end.tv_sec - t_start.tv_sec;
+
+                if(timediff.tv_sec > 0 && timediff.tv_nsec < 0)
+                {
+                    timediff.tv_nsec += 1000000000;
+                    timediff.tv_sec--;
+                }
+                else if(timediff.tv_sec < 0 && timediff.tv_nsec > 0)
+                {
+                    timediff.tv_nsec -= 1000000000;
+                    timediff.tv_sec++;
+                }
+
+                fprintf(sp->test->instr_outfile, "%ld;%ld;%ld;%ld;%ld;%ld;%ld;%ld;\r\n",res.tv_sec, res.tv_nsec ,t_start.tv_sec, t_start.tv_nsec, t_end.tv_sec, t_end.tv_nsec, timediff.tv_sec, timediff.tv_nsec);
             }
 #endif  /*QNX_NOT_SUPPORTED*/
 
 #ifdef LINUX_NOT_SUPPORTED
         if(sp->test->timemeasurement)
             {
-                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;\r\n", start_cycle,end_cycle,end_cycle - start_cycle);
+                uint64_t cps = SYSPAGE_ENTRY(qtime)->cycles_per_sec;
+                uint64_t ncycles = end_cycle - start_cycle;
+                double sec = ((double) ncycles/cps) *1000000000;
+                fprintf(sp->test->instr_outfile, "%lld;%lld;%lld;%.0f;\r\n", start_cycle,end_cycle,cps,sec);
             }
 #endif
 
