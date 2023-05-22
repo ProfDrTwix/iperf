@@ -152,20 +152,32 @@ iperf_udp_recv(struct iperf_stream *sp)
             }
         }
 
-        if(sp->test->timemeasurement)
+        if(sp->test->timemeasurement & sp->test->settings->send_recvmmsg)
         {
             clock_gettime(CLOCK_REALTIME , &t_start);
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
             clock_gettime(CLOCK_REALTIME , &t_end);
         }
+        else if(sp->test->timemeasurement & sp->test->settings->send_recvmsg)
+        {
+                clock_gettime(CLOCK_REALTIME , &t_start);
+                msgs_recvd = recvmsg(sp->socket, sp->msg, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITALL));
+                clock_gettime(CLOCK_REALTIME , &t_end);
+        }
         else
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
-        if(sp->test->timemeasurement)
+        if(sp->test->timemeasurement & sp->test->settings->send_recvmmsg)
         {
             start_cycle = ClockCycles();
             msgs_recvd = recvmmsg(sp->socket, sp->msg, sp->settings->burst, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITFORONE), &tmo);
             end_cycle = ClockCycles();
+        }
+        else if(sp->test->timemeasurement & sp->test->settings->send_recvmsg)
+        {
+                start_cycle = ClockCycles();
+                msgs_recvd = recvmsg(sp->socket, sp->msg, (sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_WAITALL));
+                end_cycle = ClockCycles();
         }
         else
 #endif
@@ -484,19 +496,31 @@ iperf_udp_send(struct iperf_stream *sp)
                         ioctl(sp->test->fd1, PERF_EVENT_IOC_DISABLE, PERF_IOC_FLAG_GROUP);
                     }
                 }
-                if(sp->test->timemeasurement)
+                if(sp->test->timemeasurement & sp->test->settings->send_recvmmsg)
                 {
                     clock_gettime(CLOCK_REALTIME , &t_start);
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
                     clock_gettime(CLOCK_REALTIME , &t_end);
                 }
+                else if(sp->test->timemeasurement & sp->test->settings->send_recvmsg)
+                {
+                        clock_gettime(CLOCK_REALTIME , &t_start);
+                        j = sendmsg(sp->socket, &sp->msg[i], (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                        clock_gettime(CLOCK_REALTIME , &t_end);
+                }
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
-                if(sp->test->timemeasurement)
+                if(sp->test->timemeasurement & sp->test->settings->send_recvmmsg)
                 {
                     start_cycle = ClockCycles();
                     j = sendmmsg(sp->socket, &sp->msg[i], sp->sendmmsg_buffered_packets_count - i, (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
                     end_cycle = ClockCycles();
+                }
+                else if(sp->test->timemeasurement & sp->test->settings->send_recvmsg)
+                {
+                        start_cycle = ClockCycles();
+                        j = sendmsg(sp->socket, &sp->msg[i], (sp->settings->burst, sp->test->MSG_OPTIONS > 0 ? sp->test->MSG_OPTIONS : MSG_DONTWAIT));
+                        end_cycle = ClockCycles();
                 }
 #endif
                 else

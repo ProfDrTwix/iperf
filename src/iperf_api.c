@@ -1125,11 +1125,11 @@ iperf_parse_arguments(struct iperf_test *test, int argc, char **argv)
             case 'U':
                 test->userspace = 1;
                 break;
+#endif
             case 'z':
                 test->zerocopy_msg = 1;
                 test->zerocopy = 0;
                 break;
-#endif
             case 'y':
                 test->timemeasurement = 1;
                 break;
@@ -1772,7 +1772,7 @@ int iperf_open_instr_logfile(struct iperf_test *test)
     if((test->kernelspace || test->userspace) & !test->timemeasurement)
         fprintf(test->instr_outfile, "Packets; Datasize; Instructions; Cachemisses; Contextswitches; Branchmisses; MSG_OPTIONS; SOCK_OPTIONS; CPU_Migrations; CPU_total_Cycles; CPU_total_Cycles_scaling;\n");
     if(test->timemeasurement)
-        fprintf(test->instr_outfile, "Resolution Sec; Resolution nSec; Time Start Sec; Time Start nSec; Time End Sec; Time End nSec; Time Diff Sec; Time Diff nSec;\n");
+        fprintf(test->instr_outfile, "Resolution Sec; Resolution nSec; Time Start Sec; Time Start nSec; Time End Sec; Time End nSec; Time Diff Sec; Time Diff nSec; \n");
 #endif  /*QNX_NOT_SUPPORTED*/
 #ifdef LINUX_NOT_SUPPORTED
         fprintf(test->instr_outfile, "Start Cycle; End Cycle; Cycles per Second; Cycles in nsec;\n");
